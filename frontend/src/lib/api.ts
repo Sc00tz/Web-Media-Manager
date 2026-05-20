@@ -260,7 +260,7 @@ export const movieApi = {
     return apiFetch<PaginatedResponse<MovieSummary>>(`/movies?${params}`);
   },
   stats: () => apiFetch<MovieStats>("/movies/stats"),
-  filterOptions: () => apiFetch<{ codecs: string[]; resolutions: string[] }>("/movies/filter-options"),
+  filterOptions: () => apiFetch<{ codecs: string[]; resolutions: string[]; noCodecCount: number }>("/movies/filter-options"),
   scanMissing: () => apiFetch<{ message: string }>("/movies/scan-missing", { method: "POST" }),
   scanAllMediaInfo: () => apiFetch<{ message: string }>("/movies/scan-mediainfo", { method: "POST" }),
   get: (id: string) => apiFetch<MovieDetail>(`/movies/${id}`),

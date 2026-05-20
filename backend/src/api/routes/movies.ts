@@ -73,10 +73,15 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
 
     if (query.videoCodec) {
       conditions.push(
-        exists(
-          db.select({ one: sql`1` }).from(movieMediaInfo)
-            .where(and(eq(movieMediaInfo.movieId, movies.id), eq(movieMediaInfo.videoCodec, query.videoCodec)))
-        )
+        query.videoCodec === "__unknown__"
+          ? exists(
+              db.select({ one: sql`1` }).from(movieMediaInfo)
+                .where(and(eq(movieMediaInfo.movieId, movies.id), sql`${movieMediaInfo.videoCodec} is null`))
+            )
+          : exists(
+              db.select({ one: sql`1` }).from(movieMediaInfo)
+                .where(and(eq(movieMediaInfo.movieId, movies.id), eq(movieMediaInfo.videoCodec, query.videoCodec)))
+            )
       );
     }
 
@@ -179,7 +184,7 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
   // Distinct filter values — drives the codec/resolution dropdowns in the UI
   app.get("/movies/filter-options", async () => {
     const db = getDb();
-    const [codecs, resolutions] = await Promise.all([
+    const [codecs, resolutions, noCodec] = await Promise.all([
       db.selectDistinct({ value: movieMediaInfo.videoCodec })
         .from(movieMediaInfo)
         .where(sql`${movieMediaInfo.videoCodec} is not null`)
@@ -188,10 +193,14 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
         .from(movieMediaInfo)
         .where(sql`${movieMediaInfo.resolution} is not null`)
         .orderBy(movieMediaInfo.resolution),
+      db.select({ count: sql<number>`count(*)` })
+        .from(movieMediaInfo)
+        .where(sql`${movieMediaInfo.videoCodec} is null`),
     ]);
     return {
       codecs: codecs.map((r) => r.value).filter(Boolean) as string[],
       resolutions: resolutions.map((r) => r.value).filter(Boolean) as string[],
+      noCodecCount: Number(noCodec[0]?.count ?? 0),
     };
   });
 
