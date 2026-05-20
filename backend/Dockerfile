@@ -32,9 +32,10 @@ COPY backend/package.json ./backend/
 
 RUN npm ci --workspaces --include-workspace-root --omit=dev
 
-# Copy compiled output
+# Copy compiled output and migration files (SQL files are not emitted by tsc)
 COPY --from=builder /app/packages/types/dist ./packages/types/dist
 COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/backend/src/db/migrations ./backend/dist/db/migrations
 
 WORKDIR /app/backend
 
@@ -44,7 +45,7 @@ ENV HOST=0.0.0.0
 
 EXPOSE 3001
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
 CMD ["node", "dist/index.js"]
