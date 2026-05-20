@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { libraryApi, type Library } from "../lib/api.js";
 import { Tabs } from "../components/ui/Tabs.js";
 import { Badge } from "../components/ui/Badge.js";
-import { Check, X } from "lucide-react";
+import { DirectoryPicker } from "../components/ui/DirectoryPicker.js";
+import { FolderOpen, Check, X } from "lucide-react";
 
 const SETTING_TABS = [
   { id: "libraries", label: "Libraries" },
@@ -31,6 +32,7 @@ function LibrariesTab() {
   const queryClient = useQueryClient();
   const { data: libraries } = useQuery({ queryKey: ["libraries"], queryFn: libraryApi.list });
   const [newLib, setNewLib] = useState({ name: "", path: "", type: "movie" as "movie" | "tv" });
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: libraryApi.create,
@@ -82,13 +84,36 @@ function LibrariesTab() {
             <option value="tv">TV Shows</option>
           </select>
         </div>
-        <input
-          type="text"
-          placeholder="/path/to/media"
-          value={newLib.path}
-          onChange={(e) => setNewLib((s) => ({ ...s, path: e.target.value }))}
-          className="w-full bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+
+        {/* Path field with browse button */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="/path/to/media"
+            value={newLib.path}
+            onChange={(e) => setNewLib((s) => ({ ...s, path: e.target.value }))}
+            className="flex-1 bg-gray-800 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 border border-white/10 rounded flex-shrink-0"
+          >
+            <FolderOpen size={14} /> Browse
+          </button>
+        </div>
+
+        {/* Directory picker inline panel */}
+        {pickerOpen && (
+          <div className="border border-white/10 rounded-lg overflow-hidden h-64 bg-gray-950">
+            <DirectoryPicker
+              value={newLib.path}
+              onChange={(p) => setNewLib((s) => ({ ...s, path: p }))}
+              onClose={() => setPickerOpen(false)}
+            />
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={createMutation.isPending || !newLib.name || !newLib.path}

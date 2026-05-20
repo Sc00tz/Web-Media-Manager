@@ -115,12 +115,19 @@ export interface MediaInfoItem {
 
 // ─── Libraries ────────────────────────────────────────────────────────────────
 
+export interface BrowseResult {
+  current: string;
+  parent: string | null;
+  entries: { name: string; path: string; isDir: boolean }[];
+}
+
 export const libraryApi = {
   list: () => apiFetch<Library[]>("/libraries"),
   create: (body: { name: string; path: string; type: "movie" | "tv" }) =>
     apiFetch<Library>("/libraries", { method: "POST", body: JSON.stringify(body) }),
   delete: (id: string) => apiFetch<void>(`/libraries/${id}`, { method: "DELETE" }),
   scan: (id: string) => apiFetch<{ message: string }>(`/libraries/${id}/scan`, { method: "POST" }),
+  browse: (dir?: string) => apiFetch<BrowseResult>(`/browse${dir ? `?dir=${encodeURIComponent(dir)}` : ""}`),
 };
 
 // ─── Movies ───────────────────────────────────────────────────────────────────

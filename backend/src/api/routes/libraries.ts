@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import fs from "fs/promises";
+import path from "path";
 import { getDb } from "../../db/index.js";
 import { libraries } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
@@ -13,6 +15,33 @@ const createLibrarySchema = z.object({
 });
 
 export async function libraryRoutes(app: FastifyInstance): Promise<void> {
+  // Directory browser — used by the path picker in the UI
+  app.get("/browse", async (req, reply) => {
+    const { dir = "/" } = req.query as { dir?: string };
+
+    // Normalise and prevent traversal
+    const resolved = path.resolve(dir);
+
+    let entries: { name: string; path: string; isDir: boolean }[] = [];
+    try {
+      const items = await fs.readdir(resolved, { withFileTypes: true });
+      entries = items
+        .filter((e) => !e.name.startsWith(".") && !e.isSymbolicLink())
+        .filter((e) => e.isDirectory())
+        .map((e) => ({
+          name: e.name,
+          path: path.join(resolved, e.name),
+          isDir: true,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+      return reply.status(400).send({ error: "Cannot read directory" });
+    }
+
+    const parent = resolved !== "/" ? path.dirname(resolved) : null;
+    return { current: resolved, parent, entries };
+  });
+
   app.get("/libraries", async () => {
     const db = getDb();
     return db.select().from(libraries).orderBy(libraries.name);
