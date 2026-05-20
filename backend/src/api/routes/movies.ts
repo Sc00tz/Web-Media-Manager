@@ -121,7 +121,7 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
               sql`array_length(${movieMediaInfo.subtitleTracks}, 1) > 0`
             ))
         )
-      )
+      )!
     );
 
     // Missing MediaInfo
@@ -220,7 +220,7 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
                 sql`array_length(${movieMediaInfo.subtitleTracks}, 1) > 0`
               ))
           )
-        )
+        )!
       ),
     ]);
 
