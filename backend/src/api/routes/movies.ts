@@ -61,12 +61,12 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
       );
     }
 
-    // Resolution / codec filters via media_info join
+    // Resolution / codec filters — exact match against values from /movies/filter-options
     if (query.resolution) {
       conditions.push(
         exists(
           db.select({ one: sql`1` }).from(movieMediaInfo)
-            .where(and(eq(movieMediaInfo.movieId, movies.id), ilike(movieMediaInfo.resolution, `%${query.resolution}%`)))
+            .where(and(eq(movieMediaInfo.movieId, movies.id), eq(movieMediaInfo.resolution, query.resolution)))
         )
       );
     }
@@ -75,7 +75,7 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
       conditions.push(
         exists(
           db.select({ one: sql`1` }).from(movieMediaInfo)
-            .where(and(eq(movieMediaInfo.movieId, movies.id), ilike(movieMediaInfo.videoCodec, `%${query.videoCodec}%`)))
+            .where(and(eq(movieMediaInfo.movieId, movies.id), eq(movieMediaInfo.videoCodec, query.videoCodec)))
         )
       );
     }
@@ -164,6 +164,25 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
       total: Number(countResult[0]?.count ?? 0),
       page: query.page,
       pageSize: query.pageSize,
+    };
+  });
+
+  // Distinct filter values — drives the codec/resolution dropdowns in the UI
+  app.get("/movies/filter-options", async () => {
+    const db = getDb();
+    const [codecs, resolutions] = await Promise.all([
+      db.selectDistinct({ value: movieMediaInfo.videoCodec })
+        .from(movieMediaInfo)
+        .where(sql`${movieMediaInfo.videoCodec} is not null`)
+        .orderBy(movieMediaInfo.videoCodec),
+      db.selectDistinct({ value: movieMediaInfo.resolution })
+        .from(movieMediaInfo)
+        .where(sql`${movieMediaInfo.resolution} is not null`)
+        .orderBy(movieMediaInfo.resolution),
+    ]);
+    return {
+      codecs: codecs.map((r) => r.value).filter(Boolean) as string[],
+      resolutions: resolutions.map((r) => r.value).filter(Boolean) as string[],
     };
   });
 

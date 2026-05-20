@@ -1,15 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { X } from "lucide-react";
-import type { MovieFiltersExtended } from "../../lib/api.js";
+import { movieApi, type MovieFiltersExtended } from "../../lib/api.js";
 
 interface Props {
   filters: MovieFiltersExtended;
   onChange: (f: MovieFiltersExtended) => void;
   onReset: () => void;
 }
-
-const RESOLUTIONS = ["", "4K", "1080", "720", "480"];
-const CODECS = ["", "HEVC", "AVC", "AV1", "VP9", "MPEG2"];
 const SORT_OPTIONS: Array<{ value: MovieFiltersExtended["sortBy"]; label: string }> = [
   { value: "title", label: "Title" },
   { value: "year", label: "Year" },
@@ -32,6 +30,12 @@ function Checkbox({ label, checked, onChange }: { label: string; checked: boolea
 }
 
 export function MovieFilterPanel({ filters, onChange, onReset }: Props) {
+  const { data: filterOptions } = useQuery({
+    queryKey: ["movie-filter-options"],
+    queryFn: movieApi.filterOptions,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const hasActiveFilters = Boolean(
     filters.genre || filters.yearMin || filters.yearMax || filters.resolution ||
     filters.videoCodec || filters.missingArtwork || filters.missingMetadata || filters.missingSubtitles
@@ -123,8 +127,9 @@ export function MovieFilterPanel({ filters, onChange, onReset }: Props) {
             onChange={(e) => set("resolution", e.target.value)}
             className="w-full bg-gray-800 border border-white/10 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            {RESOLUTIONS.map((r) => (
-              <option key={r} value={r}>{r || "Any"}</option>
+            <option value="">Any</option>
+            {filterOptions?.resolutions.map((r) => (
+              <option key={r} value={r}>{r}</option>
             ))}
           </select>
         </div>
@@ -137,8 +142,9 @@ export function MovieFilterPanel({ filters, onChange, onReset }: Props) {
             onChange={(e) => set("videoCodec", e.target.value)}
             className="w-full bg-gray-800 border border-white/10 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            {CODECS.map((c) => (
-              <option key={c} value={c}>{c || "Any"}</option>
+            <option value="">Any</option>
+            {filterOptions?.codecs.map((c) => (
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
