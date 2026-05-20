@@ -147,7 +147,7 @@ export function MovieFilterPanel({ filters, onChange, onReset }: Props) {
               <option key={c} value={c}>{c}</option>
             ))}
             {(filterOptions?.noCodecCount ?? 0) > 0 && (
-              <option value="__unknown__">Unknown ({filterOptions!.noCodecCount})</option>
+              <option value="__unknown__">Unknown / null ({filterOptions!.noCodecCount})</option>
             )}
           </select>
         </div>

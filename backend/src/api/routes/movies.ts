@@ -38,6 +38,25 @@ const movieFiltersSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
 
+// Maps a resolution bucket label to an inclusive [minHeight, maxHeight] range
+function resolutionBucket(label: string): [number, number] | null {
+  switch (label) {
+    case "SD":   return [1, 719];
+    case "720p":  return [720, 1079];
+    case "1080p": return [1080, 2159];
+    case "4K":    return [2160, 99999];
+    default:      return null;
+  }
+}
+
+function heightToBucketLabel(height: number | null | undefined): string | null {
+  if (!height) return null;
+  if (height < 720)  return "SD";
+  if (height < 1080) return "720p";
+  if (height < 2160) return "1080p";
+  return "4K";
+}
+
 export async function movieRoutes(app: FastifyInstance): Promise<void> {
   app.get("/movies", async (req) => {
     const query = movieFiltersSchema.parse(req.query);
@@ -61,14 +80,21 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
       );
     }
 
-    // Resolution / codec filters — exact match against values from /movies/filter-options
+    // Resolution filter — bucket label mapped to height range
     if (query.resolution) {
-      conditions.push(
-        exists(
-          db.select({ one: sql`1` }).from(movieMediaInfo)
-            .where(and(eq(movieMediaInfo.movieId, movies.id), eq(movieMediaInfo.resolution, query.resolution)))
-        )
-      );
+      const heightRange = resolutionBucket(query.resolution);
+      if (heightRange) {
+        conditions.push(
+          exists(
+            db.select({ one: sql`1` }).from(movieMediaInfo)
+              .where(and(
+                eq(movieMediaInfo.movieId, movies.id),
+                gte(movieMediaInfo.height, heightRange[0]),
+                lte(movieMediaInfo.height, heightRange[1]),
+              ))
+          )
+        );
+      }
     }
 
     if (query.videoCodec) {
@@ -184,22 +210,29 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
   // Distinct filter values — drives the codec/resolution dropdowns in the UI
   app.get("/movies/filter-options", async () => {
     const db = getDb();
-    const [codecs, resolutions, noCodec] = await Promise.all([
+    const [codecs, heights, noCodec] = await Promise.all([
       db.selectDistinct({ value: movieMediaInfo.videoCodec })
         .from(movieMediaInfo)
         .where(sql`${movieMediaInfo.videoCodec} is not null`)
         .orderBy(movieMediaInfo.videoCodec),
-      db.selectDistinct({ value: movieMediaInfo.resolution })
+      db.selectDistinct({ value: movieMediaInfo.height })
         .from(movieMediaInfo)
-        .where(sql`${movieMediaInfo.resolution} is not null`)
-        .orderBy(movieMediaInfo.resolution),
+        .where(sql`${movieMediaInfo.height} is not null`),
       db.select({ count: sql<number>`count(*)` })
         .from(movieMediaInfo)
         .where(sql`${movieMediaInfo.videoCodec} is null`),
     ]);
+
+    // Collapse raw heights into standard bucket labels, dedup, and sort
+    const bucketOrder = ["SD", "720p", "1080p", "4K"];
+    const bucketSet = new Set(
+      heights.map((r) => heightToBucketLabel(r.value)).filter(Boolean) as string[]
+    );
+    const resolutions = bucketOrder.filter((b) => bucketSet.has(b));
+
     return {
       codecs: codecs.map((r) => r.value).filter(Boolean) as string[],
-      resolutions: resolutions.map((r) => r.value).filter(Boolean) as string[],
+      resolutions,
       noCodecCount: Number(noCodec[0]?.count ?? 0),
     };
   });
