@@ -412,6 +412,11 @@ export const showApi = {
   list: (filters?: ShowFilters) => {
     const params = new URLSearchParams();
     if (filters?.search) params.set("search", filters.search);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.missingMetadata) params.set("missingMetadata", "true");
+    if (filters?.missingArtwork) params.set("missingArtwork", "true");
+    if (filters?.missingPoster) params.set("missingPoster", "true");
+    if (filters?.missingSubtitles) params.set("missingSubtitles", "true");
     if (filters?.page) params.set("page", String(filters.page));
     return apiFetch<PaginatedResponse<ShowSummary>>(`/shows?${params}`);
   },
@@ -421,7 +426,7 @@ export const showApi = {
     apiFetch<SeasonSummary & { episodes: EpisodeSummary[] }>(`/shows/${showId}/seasons/${seasonNumber}`),
   patchMetadata: (id: string, patch: object) =>
     apiFetch<{ success: boolean }>(`/shows/${id}/metadata`, { method: "PATCH", body: JSON.stringify(patch) }),
-  stats: () => apiFetch<{ total: number; unmatched: number; missingArtwork: number }>("/shows/stats"),
+  stats: () => apiFetch<{ total: number; unmatched: number; missingArtwork: number; missingSubtitles: number }>("/shows/stats"),
   scanMissing: () => apiFetch<{ message: string }>("/shows/scan-missing", { method: "POST" }),
 };
 

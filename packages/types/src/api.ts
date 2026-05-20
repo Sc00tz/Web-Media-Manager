@@ -40,7 +40,9 @@ export interface ShowFilters {
   genres?: string[];
   status?: string;
   missingArtwork?: boolean;
+  missingPoster?: boolean;
   missingMetadata?: boolean;
+  missingSubtitles?: boolean;
   page?: number;
   pageSize?: number;
   sortBy?: "title" | "firstAirDate" | "addedAt";

@@ -3,13 +3,18 @@ import { z } from "zod";
 import { getDb } from "../../db/index.js";
 import {
   shows, showGenres, showCast, showCrew, showRatings, showNetworks, showTags, showArtwork,
-  seasons, seasonArtwork, episodes, episodeArtwork, episodeMediaInfo,
+  seasons, seasonArtwork, episodes, episodeArtwork, episodeMediaInfo, episodeSubtitles,
 } from "../../db/schema.js";
-import { eq, and, ilike, sql, asc, notExists } from "drizzle-orm";
+import { eq, and, ilike, sql, asc, notExists, exists } from "drizzle-orm";
 import { enqueueTask } from "../../workers/queue.js";
 
 const showFiltersSchema = z.object({
   search: z.string().optional(),
+  status: z.string().optional(),
+  missingMetadata: z.coerce.boolean().optional(),
+  missingArtwork: z.coerce.boolean().optional(),
+  missingPoster: z.coerce.boolean().optional(),
+  missingSubtitles: z.coerce.boolean().optional(),
   page: z.coerce.number().default(1),
   pageSize: z.coerce.number().default(50),
 });
@@ -20,7 +25,43 @@ export async function showRoutes(app: FastifyInstance): Promise<void> {
     const query = showFiltersSchema.parse(req.query);
     const db = getDb();
     const offset = (query.page - 1) * query.pageSize;
-    const conditions = query.search ? [ilike(shows.title, `%${query.search}%`)] : [];
+    const conditions: ReturnType<typeof eq>[] = [];
+
+    if (query.search) conditions.push(ilike(shows.title, `%${query.search}%`));
+    if (query.status) conditions.push(ilike(shows.status, `%${query.status}%`));
+    if (query.missingMetadata) conditions.push(sql`(tvdb_id IS NULL AND tmdb_id IS NULL)`);
+    if (query.missingArtwork) conditions.push(
+      notExists(
+        db.select({ one: sql`1` }).from(showArtwork)
+          .where(and(eq(showArtwork.showId, shows.id), eq(showArtwork.active, true)))
+      )
+    );
+    if (query.missingPoster) conditions.push(
+      notExists(
+        db.select({ one: sql`1` }).from(showArtwork)
+          .where(and(eq(showArtwork.showId, shows.id), eq(showArtwork.active, true), eq(showArtwork.type, "poster")))
+      )
+    );
+    // Missing subtitles: show has episodes with no subtitle records and no embedded subtitle tracks
+    if (query.missingSubtitles) conditions.push(
+      exists(
+        db.select({ one: sql`1` }).from(episodes)
+          .where(and(
+            eq(episodes.showId, shows.id),
+            notExists(
+              db.select({ one: sql`1` }).from(episodeSubtitles)
+                .where(eq(episodeSubtitles.episodeId, episodes.id))
+            ),
+            notExists(
+              db.select({ one: sql`1` }).from(episodeMediaInfo)
+                .where(and(
+                  eq(episodeMediaInfo.episodeId, episodes.id),
+                  sql`array_length(${episodeMediaInfo.subtitleTracks}, 1) > 0`
+                ))
+            )
+          ))
+      )!
+    );
 
     const [items, countResult] = await Promise.all([
       db
@@ -60,7 +101,7 @@ export async function showRoutes(app: FastifyInstance): Promise<void> {
   // Stats — counts for dashboard chips
   app.get("/shows/stats", async () => {
     const db = getDb();
-    const [total, unmatched, missingArtwork] = await Promise.all([
+    const [total, unmatched, missingArtwork, missingSubtitles] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(shows),
       db.select({ count: sql<number>`count(*)` }).from(shows).where(sql`(tvdb_id IS NULL AND tmdb_id IS NULL)`),
       db.select({ count: sql<number>`count(*)` }).from(shows).where(
@@ -69,11 +110,31 @@ export async function showRoutes(app: FastifyInstance): Promise<void> {
             .where(and(eq(showArtwork.showId, shows.id), eq(showArtwork.active, true)))
         )
       ),
+      db.select({ count: sql<number>`count(*)` }).from(shows).where(
+        exists(
+          db.select({ one: sql`1` }).from(episodes)
+            .where(and(
+              eq(episodes.showId, shows.id),
+              notExists(
+                db.select({ one: sql`1` }).from(episodeSubtitles)
+                  .where(eq(episodeSubtitles.episodeId, episodes.id))
+              ),
+              notExists(
+                db.select({ one: sql`1` }).from(episodeMediaInfo)
+                  .where(and(
+                    eq(episodeMediaInfo.episodeId, episodes.id),
+                    sql`array_length(${episodeMediaInfo.subtitleTracks}, 1) > 0`
+                  ))
+              )
+            ))
+        )!
+      ),
     ]);
     return {
       total: Number(total[0]?.count ?? 0),
       unmatched: Number(unmatched[0]?.count ?? 0),
       missingArtwork: Number(missingArtwork[0]?.count ?? 0),
+      missingSubtitles: Number(missingSubtitles[0]?.count ?? 0),
     };
   });
 
