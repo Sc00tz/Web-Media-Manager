@@ -399,7 +399,7 @@ function CastAvatar({ name, profilePath }: { name: string; profilePath?: string 
   const src = profilePath
     ? (profilePath.startsWith("/") || profilePath.startsWith("\\")
         ? `/api/artwork/local?path=${encodeURIComponent(profilePath)}`
-        : profilePath)
+        : `/api/proxy/image?url=${encodeURIComponent(profilePath)}`)
     : undefined;
   return (
     <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 overflow-hidden">

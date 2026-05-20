@@ -507,11 +507,11 @@ function CastAvatar({ name, profilePath }: { name: string; profilePath?: string 
   const [imgFailed, setImgFailed] = useState(false);
 
   // Local filesystem paths go through the local file server.
-  // HTTP URLs (TMDB, TVDB CDN) load directly — they have proper CORS headers and no proxy needed.
+  // Remote URLs go through the image proxy to avoid CORS issues.
   const imgSrc = profilePath
     ? (profilePath.startsWith("/") || profilePath.startsWith("\\")
         ? `/api/artwork/local?path=${encodeURIComponent(profilePath)}`
-        : profilePath)
+        : `/api/proxy/image?url=${encodeURIComponent(profilePath)}`)
     : undefined;
 
   return (
