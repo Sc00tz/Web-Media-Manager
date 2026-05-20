@@ -22,7 +22,7 @@ import type { ISubtitleScraper, SubtitleResult } from "@mediamanager/types";
 import { ScraperError, ScraperNotConfiguredError, withRetry } from "./base.js";
 import { getApiKey, getRuntimeUsername, getRuntimePassword } from "../config/index.js";
 
-const OS_BASE = "https://api.opensubtitles.org/api/v1";
+const OS_BASE = "https://api.opensubtitles.com/api/v1";
 
 interface OsLoginResponse {
   token: string;
