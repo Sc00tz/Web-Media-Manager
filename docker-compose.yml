@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mediamanager
+      POSTGRES_USER: mediamanager
+      POSTGRES_PASSWORD: mediamanager
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediamanager"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.dev
+    restart: unless-stopped
+    # Use public DNS so outbound API calls (TMDB, TVDB, SubDL, etc.)
+    # aren't blocked by Pi-hole / AdGuard on the local network.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      PORT: "3001"
+      HOST: "0.0.0.0"
+      DATABASE_URL: postgresql://mediamanager:mediamanager@postgres:5432/mediamanager
+      REDIS_URL: redis://redis:6379
+      CACHE_DIR: /data/cache
+      UPLOAD_DIR: /data/uploads
+      JWT_SECRET: dev-local-secret
+      # API keys — override these or set them via Settings → Scrapers in the UI
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TVDB_API_KEY: ${TVDB_API_KEY:-}
+      FANART_API_KEY: ${FANART_API_KEY:-}
+      SUBDL_API_KEY: ${SUBDL_API_KEY:-}
+      OPENSUBTITLES_API_KEY: ${OPENSUBTITLES_API_KEY:-}
+      OPENSUBTITLES_USERNAME: ${OPENSUBTITLES_USERNAME:-}
+      OPENSUBTITLES_PASSWORD: ${OPENSUBTITLES_PASSWORD:-}
+    volumes:
+      # Mount only source — node_modules stay in the image (Linux binaries)
+      - ./backend/src:/app/backend/src
+      - ./packages/types/src:/app/packages/types/src
+      - backend_data:/data
+      - ${MEDIA_PATH:-/media}:${MEDIA_PATH:-/media}:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_data:

@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+# mediainfo for technical file analysis
+RUN apk add --no-cache mediainfo
+
+WORKDIR /app
+
+# Install dependencies inside the image so Linux binaries are used
+# (avoids Darwin/Linux binary mismatch when mounting source from a Mac)
+COPY package.json package-lock.json ./
+COPY packages/types/package.json ./packages/types/
+COPY backend/package.json ./backend/
+COPY tsconfig.base.json ./
+
+RUN npm install --workspaces --include-workspace-root
+
+# Source is mounted at runtime — only deps live in the image
+CMD ["npm", "run", "dev", "--workspace=backend"]

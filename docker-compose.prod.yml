@@ -1,0 +1,89 @@
+version: "3.9"
+
+# Production compose — pulls pre-built images from GHCR.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Required env vars (copy .env.example → .env and fill in):
+#   POSTGRES_PASSWORD, JWT_SECRET, MEDIA_PATH
+#   At least one scraper key: TMDB_API_KEY, TVDB_API_KEY, SUBDL_API_KEY, etc.
+#
+# To use a specific image tag instead of latest:
+#   IMAGE_TAG=v1.2.3 docker compose -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mediamanager
+      POSTGRES_USER: mediamanager
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mediamanager}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediamanager"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/sc00tz/mediamanager-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://mediamanager:${POSTGRES_PASSWORD:-mediamanager}@postgres:5432/mediamanager
+      REDIS_URL: redis://redis:6379
+      PORT: "3001"
+      HOST: "0.0.0.0"
+      JWT_SECRET: ${JWT_SECRET}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TVDB_API_KEY: ${TVDB_API_KEY:-}
+      FANART_API_KEY: ${FANART_API_KEY:-}
+      SUBDL_API_KEY: ${SUBDL_API_KEY:-}
+      OPENSUBTITLES_API_KEY: ${OPENSUBTITLES_API_KEY:-}
+      OPENSUBTITLES_USERNAME: ${OPENSUBTITLES_USERNAME:-}
+      OPENSUBTITLES_PASSWORD: ${OPENSUBTITLES_PASSWORD:-}
+      CACHE_DIR: /data/cache
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - backend_data:/data
+      - ${MEDIA_PATH:-/tmp/media}:/media:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: ghcr.io/sc00tz/mediamanager-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_data:

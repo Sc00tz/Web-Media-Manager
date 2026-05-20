@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+*.db
+*.db-shm
+*.db-wal
+coverage/
+.turbo/
+*.tsbuildinfo
+backend/uploads/
+backend/cache/
