@@ -27,6 +27,11 @@ import { closeDb, getDb } from "./db/index.js";
 import { closeQueues } from "./workers/queue.js";
 import { scraperConfig } from "./db/schema.js";
 import { setRuntimeKey } from "./config/index.js";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({
   logger: config.NODE_ENV !== "production"
@@ -53,6 +58,10 @@ async function loadSavedApiKeys() {
 }
 
 async function bootstrap() {
+  console.log("Running database migrations...");
+  await migrate(getDb(), { migrationsFolder: path.join(__dirname, "db/migrations") });
+  console.log("Migrations complete.");
+
   await loadSavedApiKeys();
 
   await app.register(cors, {
