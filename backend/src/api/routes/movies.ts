@@ -107,11 +107,20 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
       )
     );
 
-    // Missing subtitles: no subtitle records
+    // Missing subtitles: no downloaded/searched subtitle records AND no embedded tracks from MediaInfo
     if (query.missingSubtitles) conditions.push(
-      notExists(
-        db.select({ one: sql`1` }).from(movieSubtitles)
-          .where(eq(movieSubtitles.movieId, movies.id))
+      and(
+        notExists(
+          db.select({ one: sql`1` }).from(movieSubtitles)
+            .where(eq(movieSubtitles.movieId, movies.id))
+        ),
+        notExists(
+          db.select({ one: sql`1` }).from(movieMediaInfo)
+            .where(and(
+              eq(movieMediaInfo.movieId, movies.id),
+              sql`array_length(${movieMediaInfo.subtitleTracks}, 1) > 0`
+            ))
+        )
       )
     );
 
@@ -199,8 +208,18 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
         )
       ),
       db.select({ count: sql<number>`count(*)` }).from(movies).where(
-        notExists(
-          db.select({ one: sql`1` }).from(movieSubtitles).where(eq(movieSubtitles.movieId, movies.id))
+        and(
+          notExists(
+            db.select({ one: sql`1` }).from(movieSubtitles)
+              .where(eq(movieSubtitles.movieId, movies.id))
+          ),
+          notExists(
+            db.select({ one: sql`1` }).from(movieMediaInfo)
+              .where(and(
+                eq(movieMediaInfo.movieId, movies.id),
+                sql`array_length(${movieMediaInfo.subtitleTracks}, 1) > 0`
+              ))
+          )
         )
       ),
     ]);
