@@ -224,7 +224,7 @@ export async function subtitleRoutes(app: FastifyInstance): Promise<void> {
       provider: scraper?.provider ?? null,
       providers: {
         subdl: { available: subDlScraper.isAvailable(), note: "30 downloads/day free — register at subdl.com" },
-        opensubtitles: { available: openSubtitlesScraper.isAvailable(), note: "5 downloads/day free — register at opensubtitles.com" },
+        opensubtitles: { available: openSubtitlesScraper.isAvailable(), note: "5 downloads/day free — register at opensubtitles.org" },
       },
     };
   });

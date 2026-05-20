@@ -66,7 +66,7 @@ MEDIA_PATH=/path/to/your/media
 | `TVDB_API_KEY` | [thetvdb.com/dashboard/account/apikey](https://www.thetvdb.com/dashboard/account/apikey) |
 | `FANART_API_KEY` | [fanart.tv/get-an-api-key](https://fanart.tv/get-an-api-key/) — optional, adds logos and clearart |
 | `SUBDL_API_KEY` | [subdl.com/setting](https://subdl.com/setting) — free registration |
-| `OPENSUBTITLES_API_KEY` | [opensubtitles.com/en/consumers](https://www.opensubtitles.com/en/consumers) — fallback, 5/day free |
+| `OPENSUBTITLES_API_KEY` | [opensubtitles.org/en/consumers](https://www.opensubtitles.org/en/consumers) — fallback, 5/day free |
 
 ### 3. Run
 

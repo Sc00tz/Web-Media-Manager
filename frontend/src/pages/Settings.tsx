@@ -161,7 +161,7 @@ const SCRAPER_LABELS: Record<string, { label: string; hasUser?: boolean; keyLabe
   tvdb: { label: "TheTVDB v4", keyLabel: "API Key" },
   fanart: { label: "Fanart.tv", keyLabel: "API Key" },
   subdl: { label: "SubDL (recommended)", keyLabel: "API Key — register free at subdl.com" },
-  opensubtitles: { label: "OpenSubtitles.com", hasUser: true, keyLabel: "API Key — register at opensubtitles.com" },
+  opensubtitles: { label: "OpenSubtitles.org", hasUser: true, keyLabel: "API Key — register at opensubtitles.org" },
 };
 
 function ScraperConfigRow({ scraper }: { scraper: ScraperInfo }) {
@@ -307,7 +307,7 @@ function ScrapersTab() {
       <div className="bg-gray-900 border border-white/10 rounded-lg p-3 text-xs text-gray-500 space-y-1">
         <p className="font-medium text-gray-400">About subtitle providers</p>
         <p><strong className="text-gray-300">SubDL</strong> (recommended) — 30 downloads/day free. Register at subdl.com. Used automatically if configured.</p>
-        <p><strong className="text-gray-300">OpenSubtitles.com</strong> — only 5 downloads/day on the free tier. Used as fallback if SubDL is not configured. Different from the old opensubtitles.org.</p>
+        <p><strong className="text-gray-300">OpenSubtitles.org</strong> — only 5 downloads/day on the free tier. Used as fallback if SubDL is not configured.</p>
         <p className="text-gray-600">Other providers (Addic7ed, SubScene, Subscene) don't have public APIs and require web scraping. Plugin scrapers can add them in future.</p>
       </div>
 
